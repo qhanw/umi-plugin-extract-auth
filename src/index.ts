@@ -1,12 +1,27 @@
 // ref:
 // - https://umijs.org/plugin/develop.html
 import { IApi } from "umi-types";
+import { join } from "path";
 
+import { parseRouter, parsePage, menuSources, genContent } from "./generate";
 
 export default function(api: IApi, opts) {
+  const { paths } = api;
   api.onStart(() => {
+    // 解析路由
+    parseRouter(api);
+    // 解析page
+    parsePage(api);
+    // 生成资源树
+    const allSources = menuSources.map(s => {
+      let { action, title, children } = s;
+      return { action, title, children };
+    });
 
+    genContent(api, allSources);
   });
+
+  api.addPageWatcher(join(paths.absSrcPath, "pages"));
 
   // api.chainWebpackConfig(webpackConfig => {
   //   webpackConfig.resolve.alias.set(

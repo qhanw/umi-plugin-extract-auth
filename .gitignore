@@ -6,3 +6,5 @@
 /example/pages/.umi
 /example/pages/.umi-production
 /lib
+
+/example/**/.auth

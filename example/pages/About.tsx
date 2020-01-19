@@ -8,6 +8,7 @@ export default function() {
        * title: Docs
        * type: component
        * action: TEST/DOCS
+       * path: mnsfe
        */}
       <Button onClick={() => router.push("/docs")}>Docs</Button>
     </Card>
