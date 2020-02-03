@@ -8,6 +8,7 @@ export default function() {
        * title: Home
        * type: component
        * action: TEST/HOME
+       * path: api/home
        */}
       <Button onClick={() => router.push("/home")}>Home</Button>
     </Card>

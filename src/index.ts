@@ -3,25 +3,28 @@
 import { IApi } from "umi-types";
 import { join } from "path";
 
-import { parseRouter, parsePage, menuSources, genContent } from "./generate";
+import generate from "./generate";
 
 export default function(api: IApi, opts) {
   const { paths } = api;
-  api.onStart(() => {
-    // 解析路由
-    parseRouter(api);
-    // 解析page
-    parsePage(api);
-    // 生成资源树
-    const allSources = menuSources.map(s => {
-      let { action, title, children } = s;
-      return { action, title, children };
-    });
-
-    genContent(api, allSources);
-  });
+  // api.onStart(() => {
+  //    generate(api);
+  // });
 
   api.addPageWatcher(join(paths.absSrcPath, "pages"));
+
+  api.addRendererWrapperWithComponent(() => {
+    generate(api);
+    return (join(__dirname, "./tpl.js"));
+  });
+
+  // 导出文件到监时目录
+  // api.addUmiExports([
+  //   {
+  //     specifiers: ['connect'],
+  //     source: 'dva',
+  //   },
+  // ]);
 
   // api.chainWebpackConfig(webpackConfig => {
   //   webpackConfig.resolve.alias.set(

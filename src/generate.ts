@@ -4,7 +4,6 @@ const path = require("path");
 const fs = require("fs");
 // 需要操作的目录
 let sourceDir = "pages";
-// const outputConfig = "config/authority";
 // 需要过滤的关键字
 const routeFilterRules = ["exception", "error", "404", "403", "500"];
 // 可以解析的模块后缀名
@@ -13,10 +12,6 @@ const resolvedExtensions = [".tsx", ".ts", ".jsx", ".js"];
 const babel = require("@babel/core");
 const traverse = require("@babel/traverse").default;
 const commentType = "@CONFIGURE_AUTH";
-// 菜单资源
-export const menuSources = [];
-// 所有资源
-// let allSources = [];
 
 // 匹配page中权限相关配置的字段
 const authFields = ["title", "path", "type", "action"];
@@ -44,40 +39,7 @@ const genSource = (properties: any, parent?: any) => {
   obj.children = [];
   return obj;
 };
-// 迭代路由配置的ast
-const BabelTraverseMenu = {
-  ObjectExpression: path => {
-    let properties = path.node.properties;
-    // 根据当前节点找到节点所有的key
-    let keys = properties.map(property => property.key.name);
-    if (
-      keys.includes("path") &&
-      keys.includes("name") &&
-      keys.includes("routes")
-    ) {
-      // 有path、name、routes三个属性的对象提取为上层资源
-      menuSources.push(genSource(properties));
-    }
-    if (
-      keys.includes("path") &&
-      !keys.includes("routes") &&
-      !keys.includes("redirect")
-    ) {
-      // 叶子路由 component加上  需要根据component查找页面上的权限资源配置
-      let obj = genSource(properties);
-      obj.isLeaf = true;
-      menuSources.push(obj);
-    }
-  },
-  ArrayExpression: path => {
-    // 当前路径上的node
-    const currentNode = path.node;
-    currentNode.elements.forEach(element => {
-      console.log(element.parentPath);
-    });
-    // console.log(path.parentPath.parentPath.node)
-  }
-};
+
 // page ast 解析auth配置
 const parsePageAst = (file, source) => {
   const content = fs.readFileSync(file, "utf-8");
@@ -110,17 +72,16 @@ const parsePageAst = (file, source) => {
     });
     source.children.push(obj);
   });
+
+  return source;
 };
-/**
- * 解析页面权限资源配置
- */
-export const parsePage = (api: IApi) => {
-  const sources = menuSources;
-  sources.forEach(source => {
+/**解析页面权限资源配置*/
+const parsePage = (api: IApi, sources) => {
+  return sources.map(source => {
     if (source.isLeaf) {
-      //
       let pagePath = source.component;
       pagePath = path.resolve(api.paths.absSrcPath, sourceDir, pagePath);
+
       try {
         const stat = fs.statSync(pagePath);
         if (stat.isDirectory()) {
@@ -128,10 +89,10 @@ export const parsePage = (api: IApi) => {
           const files = fs.readdirSync(pagePath);
           let file = files.filter(file => file.split(".")[0] === "index")[0];
           file = path.join(pagePath, file);
-          parsePageAst(file, source);
+          return parsePageAst(file, source);
         } else if (stat.isFile()) {
           // 如果是单个文件
-          parsePageAst(pagePath, source);
+          return parsePageAst(pagePath, source);
         }
       } catch (error) {
         if (error.code === "ENOENT") {
@@ -141,16 +102,18 @@ export const parsePage = (api: IApi) => {
             let page = `${pagePath}${ext}`;
             page = require.resolve(page);
             if (page) {
-              parsePageAst(page, source);
-              break;
+              return parsePageAst(page, source);
             }
           }
         }
       }
     }
+    return source;
   });
 };
-// 过滤文件
+
+
+/**过滤文件 */
 const filterFiles = (files, rules) => {
   files = files.filter(file => {
     const arr = file.split(".");
@@ -161,10 +124,44 @@ const filterFiles = (files, rules) => {
   });
   return files;
 };
-/**
- * 解析路由
- */
-export const parseRouter = (api: IApi) => {
+/** 解析路由 */
+const parseRouter = (api: IApi) => {
+  const menuSources = [];
+  // 迭代路由配置的ast
+  const BabelTraverseMenu = {
+    ObjectExpression: path => {
+      let properties = path.node.properties;
+      // 根据当前节点找到节点所有的key
+      let keys = properties.map(property => property.key.name);
+      if (
+        keys.includes("path") &&
+        keys.includes("name") &&
+        keys.includes("routes")
+      ) {
+        // 有path、name、routes三个属性的对象提取为上层资源
+        menuSources.push(genSource(properties));
+      }
+      if (
+        keys.includes("path") &&
+        !keys.includes("routes") &&
+        !keys.includes("redirect")
+      ) {
+        // 叶子路由 component加上  需要根据component查找页面上的权限资源配置
+        let obj = genSource(properties);
+        obj.isLeaf = true;
+        menuSources.push(obj);
+      }
+    }
+    // ArrayExpression: path => {
+    //   // 当前路径上的node
+    //   const currentNode = path.node;
+    //   currentNode.elements.forEach(element => {
+    //     console.log('parentPath', element.parentPath);
+    //   });
+    //   // console.log(path.parentPath.parentPath.node)
+    // }
+  };
+
   const routeConfigPath = path.resolve(api.paths.cwd, "./config");
   const stat = fs.statSync(routeConfigPath);
   if (stat.isDirectory()) {
@@ -189,10 +186,11 @@ export const parseRouter = (api: IApi) => {
       }
     });
   }
+  return menuSources;
 };
 
-export const genContent = (api: IApi, allSources) => {
-  console.log("allSources----", allSources);
+/**生成权限文件 */
+const genContent = (api: IApi, allSources) => {
   const content = `const sources = ${JSON.stringify(
     allSources
   )}; export default sources`;
@@ -201,10 +199,18 @@ export const genContent = (api: IApi, allSources) => {
 
   const dir = `${api.paths.cwd}/.auth`;
 
-
   fs.rmdirSync(dir, { recursive: true });
   fs.mkdirSync(dir);
   fs.writeFileSync(`${dir}/index.ts`, content, "utf-8");
-
-
 };
+
+export default function(api) {
+  const menuSources = parseRouter(api);
+  // 解析page
+  const finalSource = parsePage(api, menuSources).map(item => {
+    const { action, title, children } = item;
+    return { action, title, children };
+  });
+
+  genContent(api, finalSource);
+}
