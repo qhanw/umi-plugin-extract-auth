@@ -8,6 +8,7 @@ export default function() {
        * title: About
        * type: component
        * action: TEST/ABOUT
+       * path: api/about
        */}
       <Button onClick={() => router.push("/about")}>About</Button>
     </Card>

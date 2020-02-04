@@ -1,9 +1,10 @@
+import home from "./home";
 export default [
   {
     path: "/",
     component: "./index",
     routes: [
-      { path: "/home", component: "./Home" },
+      home,
       { path: "/about", component: "./About" },
       { path: "/docs", component: "./Docs" }
     ]

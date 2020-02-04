@@ -2,19 +2,9 @@ import { IApi } from "umi-types";
 
 const path = require("path");
 const fs = require("fs");
-// 需要操作的目录
-let sourceDir = "pages";
-// 需要过滤的关键字
-const routeFilterRules = ["exception", "error", "404", "403", "500"];
-// 可以解析的模块后缀名
-const resolvedExtensions = [".tsx", ".ts", ".jsx", ".js"];
 // ast
 const babel = require("@babel/core");
 const traverse = require("@babel/traverse").default;
-const commentType = "@CONFIGURE_AUTH";
-
-// 匹配page中权限相关配置的字段
-const authFields = ["title", "path", "type", "action"];
 
 // 封装路由权限资源
 const genSource = (properties: any, parent?: any) => {
@@ -41,7 +31,7 @@ const genSource = (properties: any, parent?: any) => {
 };
 
 // page ast 解析auth配置
-const parsePageAst = (file, source) => {
+const parsePageAst = (opts, file, source) => {
   const content = fs.readFileSync(file, "utf-8");
   const plugins =
     path.extname(file) === ".tsx"
@@ -58,12 +48,12 @@ const parsePageAst = (file, source) => {
   let comments = ast.comments.filter(
     comment =>
       (comment.type === "CommentBlock" || comment.type === "Block") &&
-      comment.value.includes(commentType)
+      comment.value.includes(opts.commentType)
   );
   comments.forEach(comment => {
     const value = comment.value;
     let obj = {};
-    authFields.forEach(field => {
+    opts.authFields.forEach(field => {
       let reg = new RegExp(`${field}:(.+)`);
       let result = value.match(reg);
       result = (result && result[1]) || "";
@@ -76,11 +66,11 @@ const parsePageAst = (file, source) => {
   return source;
 };
 /**解析页面权限资源配置*/
-const parsePage = (api: IApi, sources) => {
+const parsePage = (api: IApi, opts, sources) => {
   return sources.map(source => {
     if (source.isLeaf) {
       let pagePath = source.component;
-      pagePath = path.resolve(api.paths.absSrcPath, sourceDir, pagePath);
+      pagePath = path.resolve(api.paths.absSrcPath, opts.sourceDir, pagePath);
 
       try {
         const stat = fs.statSync(pagePath);
@@ -89,20 +79,20 @@ const parsePage = (api: IApi, sources) => {
           const files = fs.readdirSync(pagePath);
           let file = files.filter(file => file.split(".")[0] === "index")[0];
           file = path.join(pagePath, file);
-          return parsePageAst(file, source);
+          return parsePageAst(opts, file, source);
         } else if (stat.isFile()) {
           // 如果是单个文件
-          return parsePageAst(pagePath, source);
+          return parsePageAst(opts, pagePath, source);
         }
       } catch (error) {
         if (error.code === "ENOENT") {
           // 无此文件或目录 再根据可解析的后缀名查找一次
-          for (let i = 0; i < resolvedExtensions.length; i++) {
-            const ext = resolvedExtensions[i];
+          for (let i = 0; i < opts.resolvedExtensions.length; i++) {
+            const ext = opts.resolvedExtensions[i];
             let page = `${pagePath}${ext}`;
             page = require.resolve(page);
             if (page) {
-              return parsePageAst(page, source);
+              return parsePageAst(opts, page, source);
             }
           }
         }
@@ -111,7 +101,6 @@ const parsePage = (api: IApi, sources) => {
     return source;
   });
 };
-
 
 /**过滤文件 */
 const filterFiles = (files, rules) => {
@@ -125,7 +114,7 @@ const filterFiles = (files, rules) => {
   return files;
 };
 /** 解析路由 */
-const parseRouter = (api: IApi) => {
+const parseRouter = (api: IApi, opts) => {
   const menuSources = [];
   // 迭代路由配置的ast
   const BabelTraverseMenu = {
@@ -162,12 +151,12 @@ const parseRouter = (api: IApi) => {
     // }
   };
 
-  const routeConfigPath = path.resolve(api.paths.cwd, "./config");
+  const routeConfigPath = path.resolve(api.paths.cwd, `./${opts.routerPath}`);
   const stat = fs.statSync(routeConfigPath);
   if (stat.isDirectory()) {
     // 目录
     let files = fs.readdirSync(routeConfigPath);
-    files = filterFiles(files, routeFilterRules);
+    files = filterFiles(files, opts.routeFilterRules);
     files.map(file => {
       const filePath = `${routeConfigPath}/${file}`;
       const content = fs.readFileSync(filePath, "utf8");
@@ -190,27 +179,40 @@ const parseRouter = (api: IApi) => {
 };
 
 /**生成权限文件 */
-const genContent = (api: IApi, allSources) => {
+const genContent = (api: IApi, opts, allSources) => {
   const content = `const sources = ${JSON.stringify(
     allSources
   )}; export default sources`;
 
-  // let writeFilePath = options.outputFile || "./config/auth.ts";
-
-  const dir = `${api.paths.cwd}/.auth`;
+  const dir = `${api.paths.cwd}/${opts.outputFilePath}`;
 
   fs.rmdirSync(dir, { recursive: true });
   fs.mkdirSync(dir);
-  fs.writeFileSync(`${dir}/index.ts`, content, "utf-8");
+  fs.writeFileSync(`${dir}/${opts.outputFile}`, content, "utf-8");
 };
 
-export default function(api) {
-  const menuSources = parseRouter(api);
+export default function(api: IApi, opts) {
+  const defaultOpts = {
+    routerPath: "config", // 路由配置文件位置
+    sourceDir: "pages", // 需要操作的目录
+    routeFilterRules: ["exception", "error", "404", "403", "500"], // 需要过滤的关键字
+    outputFile: "index.ts",
+
+    ...(opts ? opts : {}),
+
+    // 不可由外部更新
+    authFields: ["title", "path", "type", "action"], // 匹配page中权限相关配置的字段
+    resolvedExtensions: [".tsx", ".ts", ".jsx", ".js"], // 可以解析的模块后缀名
+    commentType: "@CONFIGURE_AUTH",
+    outputFilePath: ".auth"
+  };
+
+  const menuSources = parseRouter(api, defaultOpts);
   // 解析page
-  const finalSource = parsePage(api, menuSources).map(item => {
+  const finalSource = parsePage(api, defaultOpts, menuSources).map(item => {
     const { action, title, children } = item;
     return { action, title, children };
   });
 
-  genContent(api, finalSource);
+  genContent(api, defaultOpts, finalSource);
 }

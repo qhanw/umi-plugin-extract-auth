@@ -17,8 +17,8 @@ export default {
     [
       join(__dirname, "..", require("../package").main || "index.js"),
       {
-        external: true,
-        version: "4.17.11"
+        routerPatch: "config",
+        sourceDir: "pages",
       }
     ]
   ]

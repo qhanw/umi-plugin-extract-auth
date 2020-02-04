@@ -6,15 +6,14 @@ import { join } from "path";
 import generate from "./generate";
 
 export default function(api: IApi, opts) {
-  const { paths } = api;
   // api.onStart(() => {
   //    generate(api);
   // });
 
-  api.addPageWatcher(join(paths.absSrcPath, "pages"));
+  api.addPageWatcher(join(api.paths.absSrcPath, "pages"));
 
   api.addRendererWrapperWithComponent(() => {
-    generate(api);
+    generate(api, opts);
     return (join(__dirname, "./tpl.js"));
   });
 
