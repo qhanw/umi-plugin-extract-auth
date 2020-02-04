@@ -1,7 +1,10 @@
 import React from "react";
 import router from "umi/router";
 import { Card, Button } from "antd";
+import { authorization } from "umi";
+
 export default function() {
+  console.log(authorization)
   return (
     <Card>
       {/**@CONFIGURE_AUTH

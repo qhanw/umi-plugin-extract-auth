@@ -179,15 +179,13 @@ const parseRouter = (api: IApi, opts) => {
 };
 
 /**生成权限文件 */
-const genContent = (api: IApi, opts, allSources) => {
-  const content = `const sources = ${JSON.stringify(
-    allSources
-  )}; export default sources`;
+const genContent = (api: IApi, opts, sources) => {
+  const content = `export default ${JSON.stringify(sources, null, 2)};`;
 
-  const dir = `${api.paths.cwd}/${opts.outputFilePath}`;
+  const dir = `${api.paths.absSrcPath}/${opts.sourceDir}/${opts.outputFilePath}`;
 
-  fs.rmdirSync(dir, { recursive: true });
-  fs.mkdirSync(dir);
+  // fs.rmdirSync(dir, { recursive: true });
+  // fs.mkdirSync(dir);
   fs.writeFileSync(`${dir}/${opts.outputFile}`, content, "utf-8");
 };
 
@@ -196,7 +194,7 @@ export default function(api: IApi, opts) {
     routerPath: "config", // 路由配置文件位置
     sourceDir: "pages", // 需要操作的目录
     routeFilterRules: ["exception", "error", "404", "403", "500"], // 需要过滤的关键字
-    outputFile: "index.ts",
+    outputFile: "authorization.ts",
 
     ...(opts ? opts : {}),
 
@@ -204,7 +202,7 @@ export default function(api: IApi, opts) {
     authFields: ["title", "path", "type", "action"], // 匹配page中权限相关配置的字段
     resolvedExtensions: [".tsx", ".ts", ".jsx", ".js"], // 可以解析的模块后缀名
     commentType: "@CONFIGURE_AUTH",
-    outputFilePath: ".auth"
+    outputFilePath: ".umi"
   };
 
   const menuSources = parseRouter(api, defaultOpts);

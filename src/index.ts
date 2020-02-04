@@ -14,16 +14,16 @@ export default function(api: IApi, opts) {
 
   api.addRendererWrapperWithComponent(() => {
     generate(api, opts);
-    return (join(__dirname, "./tpl.js"));
+    return join(__dirname, "./tpl.js");
   });
 
   // 导出文件到监时目录
-  // api.addUmiExports([
-  //   {
-  //     specifiers: ['connect'],
-  //     source: 'dva',
-  //   },
-  // ]);
+  api.addUmiExports([
+    {
+      specifiers: [{ local: "default", exported: "authorization" }],
+      source: "./authorization"
+    }
+  ]);
 
   // api.chainWebpackConfig(webpackConfig => {
   //   webpackConfig.resolve.alias.set(

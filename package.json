@@ -2,11 +2,11 @@
   "name": "umi-plugin-extract-auth",
   "version": "0.0.1",
   "description": "",
-  "authors": {
+  "author": {
     "name": "qhanw",
     "email": "whenhan@foxmail.com"
   },
-  "repository": "/umi-plugin-extract-auth",
+  "repository": "https://github.com/qhanw/umi-plugin-extract-auth.git",
   "peerDependencies": {
     "antd": "4.x",
     "umi": "2.x || ^2.9.0-0"
@@ -32,7 +32,6 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "babel-plugin-import": "^1.13.0",
-    "lodash": "^4.17.15"
+    "babel-plugin-import": "^1.13.0"
   }
 }
