@@ -202,7 +202,8 @@ export default function(api: IApi, opts) {
     authFields: ["title", "path", "type", "action"], // 匹配page中权限相关配置的字段
     resolvedExtensions: [".tsx", ".ts", ".jsx", ".js"], // 可以解析的模块后缀名
     commentType: "@CONFIGURE_AUTH",
-    outputFilePath: ".umi"
+    outputFilePath:
+      process.env.NODE_ENV === "production" ? ".umi-production" : ".umi"
   };
 
   const menuSources = parseRouter(api, defaultOpts);
